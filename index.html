@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>出退勤管理</title>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     /* ===== リセット & ベース ===== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -752,12 +755,23 @@ function minsToLabel(m) {
 }
 
 /* =========================================
-   定数・ストレージ
+   Firebase 初期化
    ========================================= */
-const STORAGE_KEY       = 'attendance_v1';
-const STAFF_STORAGE_KEY = 'attendance_staff_names';
-const RATES_STORAGE_KEY = 'attendance_rates';
+const firebaseConfig = {
+  apiKey: "AIzaSyAXFRLr2XrDaO5rTG_QzLz8IhNH1jwbubo",
+  authDomain: "kinmu-df814.firebaseapp.com",
+  databaseURL: "https://kinmu-df814-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "kinmu-df814",
+  storageBucket: "kinmu-df814.firebasestorage.app",
+  messagingSenderId: "56477589617",
+  appId: "1:56477589617:web:38fda420bba213e7bafbd0"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
+/* =========================================
+   定数・キャッシュ
+   ========================================= */
 // ★ HTMLを直接編集する場合はここを変更してください ★
 const DEFAULT_STAFF = [
   '山田 太郎',
@@ -767,18 +781,20 @@ const DEFAULT_STAFF = [
   '伊藤 健一'
 ];
 
+// ローカルキャッシュ（Firebaseのリアルタイム更新で書き換わる）
+let _records    = [];
+let _staffNames = [...DEFAULT_STAFF];
+let _rates      = { wdNormal: 0, wdLate: 0, holNormal: 0, holLate: 0 };
+
 /* =========================================
    時給管理
    ========================================= */
 function loadRates() {
-  try {
-    const s = JSON.parse(localStorage.getItem(RATES_STORAGE_KEY));
-    if (s) return s;
-  } catch {}
-  return { wdNormal: 0, wdLate: 0, holNormal: 0, holLate: 0 };
+  return _rates;
 }
 function saveRatesToStorage(r) {
-  localStorage.setItem(RATES_STORAGE_KEY, JSON.stringify(r));
+  _rates = r;
+  db.ref('settings/rates').set(r);
 }
 
 // 給与計算：分数・区分（土日祝か否か）→ {normalPay, latePay, totalPay}
@@ -799,14 +815,11 @@ function yenLabel(v) {
    スタッフ名管理
    ========================================= */
 function loadStaffNames() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STAFF_STORAGE_KEY));
-    if (Array.isArray(saved) && saved.length === 5) return saved;
-  } catch {}
-  return [...DEFAULT_STAFF];
+  return _staffNames;
 }
 function saveStaffNamesToStorage(names) {
-  localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(names));
+  _staffNames = names;
+  db.ref('settings/staffNames').set(names);
 }
 function rebuildSelects() {
   const names = loadStaffNames();
@@ -868,13 +881,16 @@ function saveSettings() {
 }
 
 /* =========================================
-   勤務データ ストレージ
+   勤務データ ストレージ（Firebase）
    ========================================= */
 function loadRecords() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch { return []; }
+  return _records;
 }
-function saveRecords(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
+function saveRecords(records) {
+  const obj = {};
+  records.forEach(r => { obj[r.id] = r; });
+  db.ref('records').set(obj);
+}
 
 /* =========================================
    記録追加
@@ -1155,8 +1171,23 @@ function init() {
   document.getElementById('headerDate').textContent =
     `${y}年${parseInt(m)}月${parseInt(d)}日（${week[now.getDay()]}）`;
 
-  rebuildSelects();
-  renderAll();
+  // Firebase リアルタイムリスナー（どのデバイスで変更しても即反映）
+  db.ref('/').on('value', snapshot => {
+    const data = snapshot.val() || {};
+    // 勤務記録
+    _records = data.records ? Object.values(data.records) : [];
+    _records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
+    // スタッフ名
+    if (Array.isArray(data.settings?.staffNames) && data.settings.staffNames.length > 0) {
+      _staffNames = data.settings.staffNames;
+    }
+    // 時給
+    if (data.settings?.rates) {
+      _rates = data.settings.rates;
+    }
+    rebuildSelects();
+    renderAll();
+  });
 }
 
 init();
