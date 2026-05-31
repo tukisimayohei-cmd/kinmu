@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>出退勤管理</title>
+  <style>
+    /* ===== リセット & ベース ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 18px;
+      background: #f2f2f7;
+      color: #1c1c1e;
+      padding: 20px 16px 60px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* ===== ヘッダー ===== */
+    .app-header {
+      text-align: center;
+      margin-bottom: 28px;
+      position: relative;
+    }
+    .app-header h1 {
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .app-header .subtitle {
+      font-size: 15px;
+      color: #8e8e93;
+      margin-top: 4px;
+    }
+    .settings-btn {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #e5e5ea;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 22px;
+      cursor: pointer;
+      line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+      transition: filter 0.15s;
+    }
+    .settings-btn:active { filter: brightness(0.85); }
+
+    /* ===== カード ===== */
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 22px 20px;
+      margin-bottom: 22px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.05);
+    }
+    .card-title {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1.5px solid #e5e5ea;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ===== 凡例 ===== */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    /* ===== フォームグリッド ===== */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .span-2 { grid-column: 1 / -1; }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6c6c70;
+      padding-left: 4px;
+    }
+
+    /* ===== 入力要素 ===== */
+    input[type="date"],
+    input[type="time"],
+    input[type="number"],
+    input[type="month"],
+    input[type="text"],
+    select {
+      font-size: 20px;
+      padding: 14px 16px;
+      border: 2px solid #d1d1d6;
+      border-radius: 13px;
+      background: #f9f9fb;
+      color: #1c1c1e;
+      width: 100%;
+      min-height: 54px;
+      -webkit-appearance: none;
+      appearance: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #007aff;
+      background: #fff;
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 22 22'%3E%3Cpath d='M5 9l6 6 6-6' stroke='%23aeaeb2' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 46px;
+    }
+
+    /* ===== ボタン ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 18px;
+      font-weight: 700;
+      font-family: inherit;
+      padding: 15px 22px;
+      border: none;
+      border-radius: 13px;
+      cursor: pointer;
+      min-height: 54px;
+      transition: filter 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { filter: brightness(0.88); transform: scale(0.98); }
+
+    .btn-primary  { background: #007aff; color: #fff; width: 100%; }
+    .btn-success  { background: #34c759; color: #fff; }
+    .btn-warning  { background: #ff9500; color: #fff; }
+    .btn-danger   { background: #ff3b30; color: #fff; font-size: 15px; padding: 10px 16px; min-height: 40px; border-radius: 10px; }
+    .btn-ghost    { background: #e5e5ea; color: #1c1c1e; }
+    .btn-sm       { font-size: 15px; padding: 10px 18px; min-height: 44px; }
+
+    /* ===== フィルター行 ===== */
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: flex-end;
+    }
+    .filter-row .form-group { flex: 1; min-width: 160px; }
+    .filter-row .btn-group {
+      display: flex;
+      gap: 10px;
+      flex: 0 0 auto;
+      align-items: flex-end;
+    }
+
+    /* ===== サマリー ===== */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .summary-item {
+      background: #f2f2f7;
+      border-radius: 13px;
+      padding: 16px 14px;
+    }
+    .summary-item.holiday-card {
+      background: #fff2f2;
+      border: 1.5px solid #ffcdd2;
+    }
+    .s-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1c1c1e;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    .s-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 14px;
+    }
+    .s-row .s-label { color: #6c6c70; }
+    .s-row .s-val   { font-weight: 700; }
+    .s-val.blue   { color: #007aff; }
+    .s-val.red    { color: #ff3b30; }
+    .s-val.orange { color: #ff9500; }
+    .s-val.green  { color: #34c759; }
+
+    .summary-total {
+      background: #007aff;
+      border-radius: 13px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      color: #fff;
+    }
+    .summary-total .t-label { font-size: 16px; font-weight: 600; }
+    .summary-total .t-val   { font-size: 24px; font-weight: 800; }
+
+    /* ===== テーブル ===== */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+      font-size: 15px;
+    }
+    thead tr { background: #1c1c1e; color: #fff; }
+    th {
+      padding: 12px 13px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+    th.col-normal { background: #2c5f8a; }
+    th.col-late   { background: #7b2d8b; }
+    td {
+      padding: 11px 13px;
+      border-bottom: 1px solid #e5e5ea;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #f9f9fb; }
+    tbody tr:hover { background: #e8f0ff; }
+
+    /* 土日祝 → 赤背景 */
+    tbody tr.row-holiday { background: #fff2f2 !important; }
+    tbody tr.row-holiday:hover { background: #ffe0e0 !important; }
+    tbody tr.row-holiday .cell-date { color: #ff3b30; font-weight: 700; }
+    tbody tr.row-holiday .cell-day  { color: #ff3b30; font-weight: 700; }
+
+    .work-hours  { font-weight: 700; color: #007aff; }
+    .late-hours  { font-weight: 700; color: #9b59b6; }
+    .total-hours { font-weight: 700; color: #1c1c1e; }
+
+    .badge-holiday {
+      display: inline-block;
+      background: #ff3b30;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 44px 20px;
+      color: #aeaeb2;
+      font-size: 17px;
+    }
+
+    /* ===== トースト ===== */
+    .toast {
+      position: fixed;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(28,28,30,0.9);
+      color: #fff;
+      padding: 13px 28px;
+      border-radius: 40px;
+      font-size: 16px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 9999;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== スタッフ設定モーダル ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 22px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .modal-desc {
+      font-size: 14px;
+      color: #8e8e93;
+      margin-bottom: 22px;
+    }
+    .staff-input-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .staff-input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .staff-num {
+      width: 32px;
+      height: 32px;
+      background: #007aff;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .staff-input-row input[type="text"] {
+      font-size: 19px;
+      padding: 13px 15px;
+      min-height: 52px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .modal-actions .btn { flex: 1; }
+    .btn-cancel { background: #e5e5ea; color: #1c1c1e; }
+    .btn-save   { background: #007aff; color: #fff; }
+
+    /* ===== 時給設定セクション ===== */
+    .rate-section {
+      margin: 18px 0 20px;
+      padding-top: 18px;
+      border-top: 1.5px solid #e5e5ea;
+    }
+    .rate-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #1c1c1e;
+    }
+    .rate-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .rate-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .rate-item label {
+      font-size: 12px;
+      font-weight: 700;
+      padding-left: 2px;
+    }
+    .rate-item.wd label  { color: #2c5f8a; }
+    .rate-item.hol label { color: #c0392b; }
+    .rate-item.late label { opacity: 0.75; }
+    .rate-input-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .rate-input-wrap input {
+      font-size: 17px;
+      padding: 10px 12px;
+      min-height: 46px;
+    }
+    .rate-input-wrap span {
+      font-size: 14px;
+      color: #6c6c70;
+      white-space: nowrap;
+    }
+
+    /* ===== 給与列 ===== */
+    th.col-pay-wd   { background: #1a5276; }
+    th.col-pay-hol  { background: #7b241c; }
+    th.col-pay-late { background: #6c3483; }
+    th.col-pay-tot  { background: #1e8449; }
+    .pay-wd   { font-weight: 700; color: #1a5276; }
+    .pay-hol  { font-weight: 700; color: #c0392b; }
+    .pay-late { font-weight: 700; color: #8e44ad; }
+    .pay-tot  { font-weight: 800; color: #1e8449; }
+    .badge-type {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-left: 3px;
+      vertical-align: middle;
+    }
+    .badge-wd  { background: #d6eaf8; color: #1a5276; }
+    .badge-hol { background: #fadbd8; color: #922b21; }
+
+    /* ===== 印刷用スタイル ===== */
+    @media print {
+      body { background: #fff; padding: 8px; font-size: 12px; color: #000; }
+      .no-print { display: none !important; }
+      .modal-overlay { display: none !important; }
+      .settings-btn { display: none !important; }
+      .card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        padding: 14px;
+        margin-bottom: 14px;
+        border-radius: 6px;
+        page-break-inside: avoid;
+      }
+      .card-title { font-size: 14px; padding-bottom: 8px; margin-bottom: 10px; }
+      .app-header h1 { font-size: 18px; }
+      table { min-width: auto; font-size: 11px; }
+      th, td { padding: 6px 8px; }
+      thead tr { background: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      tbody tr.row-holiday { background: #ffe0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      tbody tr.row-holiday .cell-date,
+      tbody tr.row-holiday .cell-day { color: #cc0000 !important; }
+      th.col-normal { background: #2c5f8a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      th.col-late   { background: #7b2d8b !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .toast { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===== スタッフ設定モーダル ===== -->
+<div class="modal-overlay" id="settingsModal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">⚙️ スタッフ名の設定</div>
+    <div class="modal-desc">名前を入力して「保存」を押してください</div>
+    <div class="staff-input-list">
+      <div class="staff-input-row"><div class="staff-num">1</div><input type="text" id="sn1" placeholder="スタッフ1の名前"></div>
+      <div class="staff-input-row"><div class="staff-num">2</div><input type="text" id="sn2" placeholder="スタッフ2の名前"></div>
+      <div class="staff-input-row"><div class="staff-num">3</div><input type="text" id="sn3" placeholder="スタッフ3の名前"></div>
+      <div class="staff-input-row"><div class="staff-num">4</div><input type="text" id="sn4" placeholder="スタッフ4の名前"></div>
+      <div class="staff-input-row"><div class="staff-num">5</div><input type="text" id="sn5" placeholder="スタッフ5の名前"></div>
+    </div>
+    <!-- 時給設定 -->
+    <div class="rate-section">
+      <div class="rate-section-title">💰 時給設定</div>
+      <div class="rate-grid">
+        <div class="rate-item wd">
+          <label>平日・通常（〜22時）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="rateWdNormal" min="0" placeholder="1000">
+            <span>円/時</span>
+          </div>
+        </div>
+        <div class="rate-item wd late">
+          <label>平日・深夜（22時〜）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="rateWdLate" min="0" placeholder="1250">
+            <span>円/時</span>
+          </div>
+        </div>
+        <div class="rate-item hol">
+          <label>土日祝・通常（〜22時）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="rateHolNormal" min="0" placeholder="1250">
+            <span>円/時</span>
+          </div>
+        </div>
+        <div class="rate-item hol late">
+          <label>土日祝・深夜（22時〜）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="rateHolLate" min="0" placeholder="1500">
+            <span>円/時</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-save"   onclick="saveSettings()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ヘッダー -->
+<div class="app-header">
+  <h1>📋 出退勤管理</h1>
+  <div class="subtitle" id="headerDate"></div>
+  <button class="settings-btn no-print" onclick="openModal()" title="スタッフ名を設定">⚙️</button>
+</div>
+
+<!-- ===== 入力フォーム ===== -->
+<div class="card no-print">
+  <div class="card-title">✏️ 勤務記録の入力</div>
+  <div class="form-grid">
+
+    <div class="form-group">
+      <label for="date">日付</label>
+      <input type="date" id="date">
+    </div>
+
+    <div class="form-group">
+      <label for="staff">スタッフ名</label>
+      <select id="staff">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="startTime">出勤時間</label>
+      <input type="time" id="startTime">
+    </div>
+
+    <div class="form-group">
+      <label for="endTime">退勤時間</label>
+      <input type="time" id="endTime">
+    </div>
+
+    <div class="form-group">
+      <label for="breakTime">休憩時間（分）</label>
+      <input type="number" id="breakTime" min="0" max="480" value="60">
+    </div>
+
+    <div class="form-group">
+      <label>&nbsp;</label>
+      <button class="btn btn-primary" onclick="addRecord()">＋ 記録を追加</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== フィルター ===== -->
+<div class="card no-print">
+  <div class="card-title">🔍 表示フィルター</div>
+  <div class="filter-row">
+
+    <div class="form-group">
+      <label for="filterMonth">月を選択</label>
+      <input type="month" id="filterMonth">
+    </div>
+
+    <div class="form-group">
+      <label for="filterStaff">スタッフ</label>
+      <select id="filterStaff">
+        <option value="">全スタッフ</option>
+      </select>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-ghost btn-sm" onclick="renderAll()">絞り込み</button>
+      <button class="btn btn-success btn-sm" onclick="window.print()">🖨️ 印刷</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== 月別集計 ===== -->
+<div class="card" id="summarySection">
+  <div class="card-title">📊 <span id="summaryTitle">月別集計</span></div>
+
+  <div class="summary-total" id="summaryTotalRow" style="display:none">
+    <span class="t-label" id="totalLabel">合計実働時間</span>
+    <span class="t-val" id="totalHours">0時間</span>
+  </div>
+
+  <div class="summary-grid" id="summaryGrid">
+    <p class="no-data">データがありません</p>
+  </div>
+</div>
+
+<!-- ===== 勤務記録一覧 ===== -->
+<div class="card">
+  <div class="card-title">📄 <span id="tableTitle">勤務記録一覧</span></div>
+
+  <!-- 凡例 -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#ffe0e0;border:1px solid #ffb3b3"></div>
+      <span>土曜・日曜・祝日（割増賃金対象）</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background:#e8d5f5;border:1px solid #c9a0dc"></div>
+      <span>22時以降（深夜割増対象）</span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>日付</th>
+          <th>曜日</th>
+          <th>スタッフ名</th>
+          <th>出勤</th>
+          <th>退勤</th>
+          <th>休憩<br>(分)</th>
+          <th class="col-normal">通常時間<br>〜22時</th>
+          <th class="col-late">深夜時間<br>22時〜</th>
+          <th>合計<br>実働</th>
+          <th class="no-print">操作</th>
+        </tr>
+      </thead>
+      <tbody id="recordsBody">
+        <tr><td colspan="10" class="no-data">記録がありません</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* =========================================
+   祝日リスト（2023〜2028）
+   ========================================= */
+const JP_HOL = new Set([
+  '2023-01-01','2023-01-02','2023-01-09','2023-02-11','2023-02-23','2023-03-21',
+  '2023-04-29','2023-05-03','2023-05-04','2023-05-05','2023-07-17','2023-08-11',
+  '2023-09-18','2023-09-23','2023-10-09','2023-11-03','2023-11-23',
+  '2024-01-01','2024-01-08','2024-02-11','2024-02-12','2024-02-23','2024-03-20',
+  '2024-04-29','2024-05-03','2024-05-04','2024-05-05','2024-05-06','2024-07-15',
+  '2024-08-11','2024-08-12','2024-09-16','2024-09-22','2024-09-23','2024-10-14',
+  '2024-11-03','2024-11-04','2024-11-23',
+  '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24','2025-03-20',
+  '2025-04-29','2025-05-03','2025-05-04','2025-05-05','2025-05-06','2025-07-21',
+  '2025-08-11','2025-09-15','2025-09-23','2025-10-13','2025-11-03','2025-11-23','2025-11-24',
+  '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
+  '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06','2026-07-20',
+  '2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12','2026-11-03','2026-11-23',
+  '2027-01-01','2027-01-11','2027-02-11','2027-02-23','2027-03-21',
+  '2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19',
+  '2027-08-11','2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23',
+  '2028-01-01','2028-01-10','2028-02-11','2028-02-23','2028-03-20',
+  '2028-04-29','2028-05-03','2028-05-04','2028-05-05','2028-07-17',
+  '2028-08-11','2028-09-18','2028-09-22','2028-10-09','2028-11-03','2028-11-23',
+]);
+
+const WEEK_JP = ['日','月','火','水','木','金','土'];
+
+/* =========================================
+   祝日・曜日判定
+   ========================================= */
+function getDayInfo(dateStr) {
+  const d   = new Date(dateStr + 'T00:00:00');
+  const dw  = d.getDay(); // 0=日, 6=土
+  const isSat = dw === 6;
+  const isSun = dw === 0;
+  const isHol = JP_HOL.has(dateStr);
+  const isSpecial = isSat || isSun || isHol; // 割増対象
+  return { dw, isSat, isSun, isHol, isSpecial, dayLabel: WEEK_JP[dw] };
+}
+
+/* =========================================
+   時間計算（通常・深夜 分割）
+   ========================================= */
+function calcSplitMinutes(start, end, brk) {
+  if (!start || !end) return { normalMins: 0, lateMins: 0, workMinutes: 0 };
+
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let startM = sh * 60 + sm;
+  let endM   = eh * 60 + em;
+  if (endM <= startM) endM += 1440; // 深夜跨ぎ対応
+
+  const LATE = 22 * 60; // 22:00 = 1320分
+  // 22時を跨いで翌日になる場合に対応（endMが1440超の場合LATE=1320で固定）
+  const lateStart = LATE;
+
+  let rawNormal, rawLate;
+  if (endM <= lateStart) {
+    rawNormal = endM - startM;
+    rawLate   = 0;
+  } else if (startM >= lateStart) {
+    rawNormal = 0;
+    rawLate   = endM - startM;
+  } else {
+    rawNormal = lateStart - startM;
+    rawLate   = endM - lateStart;
+  }
+
+  // 休憩は通常時間から先に差し引き、残りを深夜から引く
+  let brkLeft   = parseInt(brk) || 0;
+  let normalMins = Math.max(0, rawNormal - brkLeft);
+  brkLeft       = Math.max(0, brkLeft - rawNormal);
+  let lateMins   = Math.max(0, rawLate - brkLeft);
+
+  return { normalMins, lateMins, workMinutes: normalMins + lateMins };
+}
+
+function minsToLabel(m) {
+  if (!m && m !== 0) return '—';
+  if (m === 0)       return '—';
+  const h  = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm > 0 ? `${h}時間${mm}分` : `${h}時間`;
+}
+
+/* =========================================
+   定数・ストレージ
+   ========================================= */
+const STORAGE_KEY       = 'attendance_v1';
+const STAFF_STORAGE_KEY = 'attendance_staff_names';
+const RATES_STORAGE_KEY = 'attendance_rates';
+
+// ★ HTMLを直接編集する場合はここを変更してください ★
+const DEFAULT_STAFF = [
+  '山田 太郎',
+  '鈴木 花子',
+  '佐藤 次郎',
+  '田中 美咲',
+  '伊藤 健一'
+];
+
+/* =========================================
+   時給管理
+   ========================================= */
+function loadRates() {
+  try {
+    const s = JSON.parse(localStorage.getItem(RATES_STORAGE_KEY));
+    if (s) return s;
+  } catch {}
+  return { wdNormal: 0, wdLate: 0, holNormal: 0, holLate: 0 };
+}
+function saveRatesToStorage(r) {
+  localStorage.setItem(RATES_STORAGE_KEY, JSON.stringify(r));
+}
+
+// 給与計算：分数・区分（土日祝か否か）→ {normalPay, latePay, totalPay}
+function calcPay(normalMins, lateMins, isSpecial) {
+  const rt = loadRates();
+  const nr = isSpecial ? rt.holNormal : rt.wdNormal;
+  const lr = isSpecial ? rt.holLate   : rt.wdLate;
+  const normalPay = Math.round((normalMins / 60) * nr);
+  const latePay   = Math.round((lateMins   / 60) * lr);
+  return { normalPay, latePay, totalPay: normalPay + latePay };
+}
+
+function yenLabel(v) {
+  return v > 0 ? v.toLocaleString() + '円' : '—';
+}
+
+/* =========================================
+   スタッフ名管理
+   ========================================= */
+function loadStaffNames() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STAFF_STORAGE_KEY));
+    if (Array.isArray(saved) && saved.length === 5) return saved;
+  } catch {}
+  return [...DEFAULT_STAFF];
+}
+function saveStaffNamesToStorage(names) {
+  localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(names));
+}
+function rebuildSelects() {
+  const names = loadStaffNames();
+  ['staff', 'filterStaff'].forEach(elId => {
+    const el      = document.getElementById(elId);
+    const prevVal = el.value;
+    const isFilter = elId === 'filterStaff';
+    el.innerHTML  = isFilter
+      ? '<option value="">全スタッフ</option>'
+      : '<option value="">選択してください</option>';
+    names.forEach(n => {
+      if (!n.trim()) return;
+      const o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      el.appendChild(o);
+    });
+    if (prevVal) el.value = prevVal;
+  });
+}
+
+/* =========================================
+   モーダル
+   ========================================= */
+function openModal() {
+  const names = loadStaffNames();
+  for (let i = 1; i <= 5; i++)
+    document.getElementById('sn' + i).value = names[i - 1] || '';
+  const rt = loadRates();
+  document.getElementById('rateWdNormal').value  = rt.wdNormal  || '';
+  document.getElementById('rateWdLate').value    = rt.wdLate    || '';
+  document.getElementById('rateHolNormal').value = rt.holNormal || '';
+  document.getElementById('rateHolLate').value   = rt.holLate   || '';
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('settingsModal')) closeModal();
+}
+function saveSettings() {
+  // スタッフ名
+  const names = [];
+  for (let i = 1; i <= 5; i++)
+    names.push(document.getElementById('sn' + i).value.trim());
+  if (names.every(n => !n)) { toast('⚠️ 少なくとも1人の名前を入力してください'); return; }
+  saveStaffNamesToStorage(names);
+  rebuildSelects();
+  // 時給
+  saveRatesToStorage({
+    wdNormal:  parseInt(document.getElementById('rateWdNormal').value)  || 0,
+    wdLate:    parseInt(document.getElementById('rateWdLate').value)    || 0,
+    holNormal: parseInt(document.getElementById('rateHolNormal').value) || 0,
+    holLate:   parseInt(document.getElementById('rateHolLate').value)   || 0,
+  });
+  closeModal();
+  toast('✅ 設定を保存しました');
+  renderAll();
+}
+
+/* =========================================
+   勤務データ ストレージ
+   ========================================= */
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+function saveRecords(r) { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); }
+
+/* =========================================
+   記録追加
+   ========================================= */
+function addRecord() {
+  const date      = document.getElementById('date').value;
+  const staff     = document.getElementById('staff').value;
+  const startTime = document.getElementById('startTime').value;
+  const endTime   = document.getElementById('endTime').value;
+  const breakTime = document.getElementById('breakTime').value;
+
+  if (!date || !staff || !startTime || !endTime) {
+    toast('⚠️ 日付・スタッフ・出退勤時間を入力してください');
+    return;
+  }
+
+  const split   = calcSplitMinutes(startTime, endTime, breakTime);
+  const records = loadRecords();
+  records.push({
+    id: Date.now(),
+    date, staff, startTime, endTime,
+    breakTime:   parseInt(breakTime) || 0,
+    normalMins:  split.normalMins,
+    lateMins:    split.lateMins,
+    workMinutes: split.workMinutes
+  });
+  records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
+  saveRecords(records);
+  toast('✅ 記録を追加しました');
+  renderAll();
+}
+
+/* =========================================
+   記録削除
+   ========================================= */
+function deleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  saveRecords(loadRecords().filter(r => r.id !== id));
+  toast('🗑️ 記録を削除しました');
+  renderAll();
+}
+
+/* =========================================
+   描画
+   ========================================= */
+function renderAll() {
+  const fm = document.getElementById('filterMonth').value;
+  const fs = document.getElementById('filterStaff').value;
+
+  let records = loadRecords();
+  if (fm) records = records.filter(r => r.date.startsWith(fm));
+  if (fs) records = records.filter(r => r.staff === fs);
+
+  const monthLabel = fm ? formatMonth(fm) : '全期間';
+  const staffLabel = fs ? fs : '全スタッフ';
+
+  document.getElementById('summaryTitle').textContent = `${monthLabel}・${staffLabel}`;
+  document.getElementById('tableTitle').textContent   = `勤務記録一覧（${monthLabel}・${staffLabel}）`;
+
+  renderTable(records);
+  renderSummary(records, fs);
+}
+
+function renderTable(records) {
+  const tbody = document.getElementById('recordsBody');
+  if (!records.length) {
+    tbody.innerHTML = '<tr><td colspan="14" class="no-data">表示できる記録がありません</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = records.map(r => {
+    const info = getDayInfo(r.date);
+
+    // 旧データ（normalMins未保存）は再計算
+    let normalMins = r.normalMins;
+    let lateMins   = r.lateMins;
+    let workMins   = r.workMinutes;
+    if (normalMins === undefined || lateMins === undefined) {
+      const split = calcSplitMinutes(r.startTime, r.endTime, r.breakTime);
+      normalMins  = split.normalMins;
+      lateMins    = split.lateMins;
+      workMins    = split.workMinutes;
+    }
+
+    // 曜日ラベル
+    let dayLabel = info.dayLabel;
+    if (info.isHol) dayLabel += '<span class="badge-holiday">祝</span>';
+    const typeBadge = info.isSpecial
+      ? '<span class="badge-type badge-hol">土日祝</span>'
+      : '<span class="badge-type badge-wd">平日</span>';
+
+    const trClass = info.isSpecial ? 'row-holiday' : '';
+
+    return `<tr class="${trClass}">
+      <td class="cell-date">${fmtDate(r.date)}</td>
+      <td class="cell-day">${dayLabel}</td>
+      <td>${esc(r.staff)}${typeBadge}</td>
+      <td>${r.startTime}</td>
+      <td>${r.endTime}</td>
+      <td style="text-align:center">${r.breakTime}</td>
+      <td class="work-hours">${minsToLabel(normalMins)}</td>
+      <td class="late-hours">${minsToLabel(lateMins)}</td>
+      <td class="total-hours">${minsToLabel(workMins)}</td>
+      <td class="no-print">
+        <button class="btn btn-danger" onclick="deleteRecord(${r.id})">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSummary(records, filterStaff) {
+  const grid       = document.getElementById('summaryGrid');
+  const totalRow   = document.getElementById('summaryTotalRow');
+  const totalHours = document.getElementById('totalHours');
+  const totalLabel = document.getElementById('totalLabel');
+
+  if (!records.length) {
+    grid.innerHTML = '<p class="no-data">データがありません</p>';
+    totalRow.style.display = 'none';
+    return;
+  }
+
+  // スタッフ別集計
+  const map = {};
+  let grandTotal = 0, grandPay = 0;
+
+  records.forEach(r => {
+    if (!map[r.staff]) map[r.staff] = {
+      wdNormal: 0, wdLate: 0, holNormal: 0, holLate: 0,
+      total: 0, days: 0, holDays: 0,
+      wdNormalPay: 0, wdLatePay: 0, holNormalPay: 0, holLatePay: 0, totalPay: 0
+    };
+
+    // 旧データ対応
+    let nm = r.normalMins, lm = r.lateMins, wm = r.workMinutes;
+    if (nm === undefined || lm === undefined) {
+      const split = calcSplitMinutes(r.startTime, r.endTime, r.breakTime);
+      nm = split.normalMins; lm = split.lateMins; wm = split.workMinutes;
+    }
+
+    const info = getDayInfo(r.date);
+    const pay  = calcPay(nm, lm, info.isSpecial);
+    const d    = map[r.staff];
+
+    if (info.isSpecial) {
+      d.holNormal += nm; d.holLate += lm;
+      d.holNormalPay += pay.normalPay; d.holLatePay += pay.latePay;
+      d.holDays += 1;
+    } else {
+      d.wdNormal += nm; d.wdLate += lm;
+      d.wdNormalPay += pay.normalPay; d.wdLatePay += pay.latePay;
+    }
+    d.total    += wm;
+    d.totalPay += pay.totalPay;
+    d.days     += 1;
+
+    grandTotal += wm;
+    grandPay   += pay.totalPay;
+  });
+
+  // 合計バー
+  const rates = loadRates();
+  const ratesSet = rates.wdNormal > 0 || rates.holNormal > 0;
+  totalRow.style.display = 'flex';
+  totalLabel.textContent = filterStaff ? `${filterStaff} 合計` : '全スタッフ合計';
+
+  // 全スタッフの深夜給与合計（平日・土日祝）
+  let allWdLatePay = 0, allHolLatePay = 0;
+  Object.values(map).forEach(d => { allWdLatePay += d.wdLatePay; allHolLatePay += d.holLatePay; });
+
+  if (ratesSet) {
+    let txt = `${minsToLabel(grandTotal)}　合計給与：${grandPay.toLocaleString()}円`;
+    if (allWdLatePay > 0)  txt += `　平日深夜：${allWdLatePay.toLocaleString()}円`;
+    if (allHolLatePay > 0) txt += `　土日祝深夜：${allHolLatePay.toLocaleString()}円`;
+    totalHours.textContent = txt;
+  } else {
+    totalHours.textContent = minsToLabel(grandTotal);
+  }
+
+  grid.innerHTML = Object.entries(map).map(([name, d]) => {
+    const hasHol = d.holDays > 0;
+    const lateMins = d.wdLate + d.holLate;
+    const latePay  = d.wdLatePay + d.holLatePay;
+    return `
+    <div class="summary-item ${hasHol ? 'holiday-card' : ''}">
+      <div class="s-name">${esc(name)}</div>
+
+      <div class="s-row"><span class="s-label">━━ 勤務時間 ━━</span><span></span></div>
+      <div class="s-row">
+        <span class="s-label">平日・通常（〜22時）</span>
+        <span class="s-val blue">${minsToLabel(d.wdNormal)}</span>
+      </div>
+      ${hasHol ? `<div class="s-row">
+        <span class="s-label">土日祝・通常（〜22時）</span>
+        <span class="s-val red">${minsToLabel(d.holNormal)}</span>
+      </div>` : ''}
+      ${d.wdLate > 0 ? `<div class="s-row">
+        <span class="s-label">平日・深夜（22時〜）</span>
+        <span class="s-val" style="color:#8e44ad">${minsToLabel(d.wdLate)}</span>
+      </div>` : ''}
+      ${d.holLate > 0 ? `<div class="s-row">
+        <span class="s-label">土日祝・深夜（22時〜）</span>
+        <span class="s-val" style="color:#8e44ad">${minsToLabel(d.holLate)}</span>
+      </div>` : ''}
+      <div class="s-row">
+        <span class="s-label">合計実働時間</span>
+        <span class="s-val">${minsToLabel(d.total)}</span>
+      </div>
+      <div class="s-row">
+        <span class="s-label">勤務日数（うち土日祝）</span>
+        <span class="s-val">${d.days}日${hasHol ? `<span style="color:#ff3b30;font-size:12px">（${d.holDays}日）</span>` : ''}</span>
+      </div>
+
+      ${ratesSet ? `
+      <div class="s-row" style="margin-top:8px"><span class="s-label">━━ 給与内訳 ━━</span><span></span></div>
+      <div class="s-row">
+        <span class="s-label">平日・通常給与</span>
+        <span class="s-val blue">${yenLabel(d.wdNormalPay)}</span>
+      </div>
+      ${hasHol ? `<div class="s-row">
+        <span class="s-label">土日祝・通常給与</span>
+        <span class="s-val red">${yenLabel(d.holNormalPay)}</span>
+      </div>` : ''}
+      ${d.wdLatePay > 0 ? `<div class="s-row">
+        <span class="s-label">平日・深夜給与（22時〜）</span>
+        <span class="s-val" style="color:#8e44ad">${yenLabel(d.wdLatePay)}</span>
+      </div>` : ''}
+      ${d.holLatePay > 0 ? `<div class="s-row">
+        <span class="s-label">土日祝・深夜給与（22時〜）</span>
+        <span class="s-val red" style="color:#8e44ad">${yenLabel(d.holLatePay)}</span>
+      </div>` : ''}
+      <div class="s-row" style="border-top:1.5px solid #e5e5ea;margin-top:6px;padding-top:6px">
+        <span class="s-label" style="font-weight:700">合計給与</span>
+        <span class="s-val green" style="font-size:18px">${yenLabel(d.totalPay)}</span>
+      </div>
+      ` : ''}
+    </div>`;
+  }).join('');
+}
+
+/* =========================================
+   ユーティリティ
+   ========================================= */
+function fmtDate(s) {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${y}/${m}/${d}`;
+}
+function formatMonth(s) {
+  if (!s) return '';
+  const [y, m] = s.split('-');
+  return `${y}年${parseInt(m)}月`;
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* =========================================
+   初期化
+   ========================================= */
+function init() {
+  const now = new Date();
+  const y  = now.getFullYear();
+  const m  = String(now.getMonth() + 1).padStart(2, '0');
+  const d  = String(now.getDate()).padStart(2, '0');
+
+  document.getElementById('date').value        = `${y}-${m}-${d}`;
+  document.getElementById('filterMonth').value = `${y}-${m}`;
+
+  const week = ['日','月','火','水','木','金','土'];
+  document.getElementById('headerDate').textContent =
+    `${y}年${parseInt(m)}月${parseInt(d)}日（${week[now.getDay()]}）`;
+
+  rebuildSelects();
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
