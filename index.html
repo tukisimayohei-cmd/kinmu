@@ -52,6 +52,54 @@
     }
     .settings-btn:active { filter: brightness(0.85); }
 
+    /* ===== 管理者ボタン ===== */
+    .admin-btn {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: #e5e5ea;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s, color 0.2s, filter 0.15s;
+      color: #6c6c70;
+    }
+    .admin-btn.active {
+      background: #ff9500;
+      color: #fff;
+    }
+    .admin-btn:active { filter: brightness(0.85); }
+
+    /* ===== スタッフ別時給ブロック ===== */
+    .staff-rate-block {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #e5e5ea;
+    }
+    .staff-rate-block:last-child { border-bottom: none; margin-bottom: 0; }
+    .staff-rate-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #007aff;
+      margin-bottom: 8px;
+    }
+    .badge-admin {
+      display: inline-block;
+      background: #ff9500;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
     /* ===== カード ===== */
     .card {
       background: #ffffff;
@@ -335,6 +383,8 @@
       padding: 28px 24px;
       width: 100%;
       max-width: 480px;
+      max-height: 85vh;
+      overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       animation: slideUp 0.25s ease;
     }
@@ -501,39 +551,18 @@
       <div class="staff-input-row"><div class="staff-num">4</div><input type="text" id="sn4" placeholder="スタッフ4の名前"></div>
       <div class="staff-input-row"><div class="staff-num">5</div><input type="text" id="sn5" placeholder="スタッフ5の名前"></div>
     </div>
-    <!-- 時給設定 -->
-    <div class="rate-section">
-      <div class="rate-section-title">💰 時給設定</div>
-      <div class="rate-grid">
-        <div class="rate-item wd">
-          <label>平日・通常（〜22時）</label>
-          <div class="rate-input-wrap">
-            <input type="number" id="rateWdNormal" min="0" placeholder="1000">
-            <span>円/時</span>
-          </div>
-        </div>
-        <div class="rate-item wd late">
-          <label>平日・深夜（22時〜）</label>
-          <div class="rate-input-wrap">
-            <input type="number" id="rateWdLate" min="0" placeholder="1250">
-            <span>円/時</span>
-          </div>
-        </div>
-        <div class="rate-item hol">
-          <label>土日祝・通常（〜22時）</label>
-          <div class="rate-input-wrap">
-            <input type="number" id="rateHolNormal" min="0" placeholder="1250">
-            <span>円/時</span>
-          </div>
-        </div>
-        <div class="rate-item hol late">
-          <label>土日祝・深夜（22時〜）</label>
-          <div class="rate-input-wrap">
-            <input type="number" id="rateHolLate" min="0" placeholder="1500">
-            <span>円/時</span>
-          </div>
-        </div>
+    <!-- 管理者PIN設定（管理者モード時のみ表示） -->
+    <div class="rate-section" id="pinSection" style="display:none">
+      <div class="rate-section-title">🔐 管理者PIN変更</div>
+      <div class="rate-input-wrap">
+        <input type="number" id="adminPinInput" min="0" max="99999" placeholder="1234" style="max-width:140px;min-height:46px;font-size:17px;padding:10px 12px">
+        <span>（数字）</span>
       </div>
+    </div>
+    <!-- スタッフ別時給設定（管理者モード時のみ表示） -->
+    <div class="rate-section" id="staffRatesSection" style="display:none">
+      <div class="rate-section-title">💰 スタッフ別時給設定</div>
+      <div id="staffRatesList"></div>
     </div>
 
     <div class="modal-actions">
@@ -547,6 +576,7 @@
 <div class="app-header">
   <h1>📋 出退勤管理</h1>
   <div class="subtitle" id="headerDate"></div>
+  <button class="admin-btn no-print" id="adminBtn" onclick="toggleAdminMode()" title="管理者モード">🔒</button>
   <button class="settings-btn no-print" onclick="openModal()" title="スタッフ名を設定">⚙️</button>
 </div>
 
@@ -569,12 +599,12 @@
 
     <div class="form-group">
       <label for="startTime">出勤時間</label>
-      <input type="time" id="startTime">
+      <input type="time" id="startTime" step="300">
     </div>
 
     <div class="form-group">
       <label for="endTime">退勤時間</label>
-      <input type="time" id="endTime">
+      <input type="time" id="endTime" step="300">
     </div>
 
     <div class="form-group">
@@ -772,7 +802,6 @@ const db = firebase.database();
 /* =========================================
    定数・キャッシュ
    ========================================= */
-// ★ HTMLを直接編集する場合はここを変更してください ★
 const DEFAULT_STAFF = [
   '山田 太郎',
   '鈴木 花子',
@@ -781,42 +810,78 @@ const DEFAULT_STAFF = [
   '伊藤 健一'
 ];
 
-// ローカルキャッシュ（Firebaseのリアルタイム更新で書き換わる）
 let _records    = [];
 let _staffNames = [...DEFAULT_STAFF];
-let _rates      = { wdNormal: 0, wdLate: 0, holNormal: 0, holLate: 0 };
+let _staffRates = {};          // { staffName: { wdNormal, wdLate, holNormal, holLate } }
+let _adminMode  = false;
+let _adminPin   = '1234';
 
 /* =========================================
-   時給管理
+   時給管理（スタッフ別）
    ========================================= */
-function loadRates() {
-  return _rates;
+function getStaffRateObj(staffName) {
+  return _staffRates[staffName] || { wdNormal: 0, wdLate: 0, holNormal: 0, holLate: 0 };
 }
-function saveRatesToStorage(r) {
-  _rates = r;
-  db.ref('settings/rates').set(r);
+function saveStaffRatesToStorage(obj) {
+  _staffRates = obj;
+  db.ref('settings/staffRates').set(obj);
+}
+function saveAdminPinToStorage(pin) {
+  _adminPin = String(pin);
+  db.ref('settings/adminPin').set(pin);
 }
 
-// 給与計算：分数・区分（土日祝か否か）→ {normalPay, latePay, totalPay}
-function calcPay(normalMins, lateMins, isSpecial) {
-  const rt = loadRates();
+// 給与計算（スタッフ名で個別時給を参照）
+function calcPay(normalMins, lateMins, isSpecial, staffName) {
+  const rt = getStaffRateObj(staffName);
   const nr = isSpecial ? rt.holNormal : rt.wdNormal;
   const lr = isSpecial ? rt.holLate   : rt.wdLate;
   const normalPay = Math.round((normalMins / 60) * nr);
   const latePay   = Math.round((lateMins   / 60) * lr);
   return { normalPay, latePay, totalPay: normalPay + latePay };
 }
-
 function yenLabel(v) {
   return v > 0 ? v.toLocaleString() + '円' : '—';
 }
 
 /* =========================================
+   管理者モード
+   ========================================= */
+function toggleAdminMode() {
+  if (_adminMode) {
+    _adminMode = false;
+    updateAdminUI();
+    renderAll();
+    toast('🔒 管理者モードを終了しました');
+  } else {
+    const pin = prompt('管理者PINを入力してください：');
+    if (pin === null) return;
+    if (pin === String(_adminPin)) {
+      _adminMode = true;
+      updateAdminUI();
+      renderAll();
+      toast('🔓 管理者モードになりました');
+    } else {
+      toast('❌ PINが違います');
+    }
+  }
+}
+function updateAdminUI() {
+  const btn = document.getElementById('adminBtn');
+  if (!btn) return;
+  if (_adminMode) {
+    btn.textContent = '🔓 管理者';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '🔒';
+    btn.classList.remove('active');
+  }
+}
+
+/* =========================================
    スタッフ名管理
    ========================================= */
-function loadStaffNames() {
-  return _staffNames;
-}
+function loadStaffNames() { return _staffNames; }
 function saveStaffNamesToStorage(names) {
   _staffNames = names;
   db.ref('settings/staffNames').set(names);
@@ -847,11 +912,18 @@ function openModal() {
   const names = loadStaffNames();
   for (let i = 1; i <= 5; i++)
     document.getElementById('sn' + i).value = names[i - 1] || '';
-  const rt = loadRates();
-  document.getElementById('rateWdNormal').value  = rt.wdNormal  || '';
-  document.getElementById('rateWdLate').value    = rt.wdLate    || '';
-  document.getElementById('rateHolNormal').value = rt.holNormal || '';
-  document.getElementById('rateHolLate').value   = rt.holLate   || '';
+
+  const pinSection   = document.getElementById('pinSection');
+  const ratesSection = document.getElementById('staffRatesSection');
+  if (_adminMode) {
+    pinSection.style.display   = '';
+    ratesSection.style.display = '';
+    document.getElementById('adminPinInput').value = _adminPin || '';
+    buildStaffRateInputs(names);
+  } else {
+    pinSection.style.display   = 'none';
+    ratesSection.style.display = 'none';
+  }
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeModal() {
@@ -860,6 +932,54 @@ function closeModal() {
 function closeModalOutside(e) {
   if (e.target === document.getElementById('settingsModal')) closeModal();
 }
+
+// スタッフ別時給入力欄を動的に生成
+function buildStaffRateInputs(names) {
+  const container = document.getElementById('staffRatesList');
+  const validNames = names.filter(n => n.trim());
+  if (!validNames.length) {
+    container.innerHTML = '<p style="color:#8e8e93;font-size:14px">スタッフ名を入力してから保存してください</p>';
+    return;
+  }
+  container.innerHTML = validNames.map((name, i) => {
+    const rt = getStaffRateObj(name);
+    return `
+    <div class="staff-rate-block">
+      <div class="staff-rate-name">${esc(name)}</div>
+      <div class="rate-grid">
+        <div class="rate-item wd">
+          <label>平日・通常（〜22時）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="srate_${i}_wdNormal" value="${rt.wdNormal || ''}" min="0" placeholder="1000">
+            <span>円/時</span>
+          </div>
+        </div>
+        <div class="rate-item wd late">
+          <label>平日・深夜（22時〜）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="srate_${i}_wdLate" value="${rt.wdLate || ''}" min="0" placeholder="1250">
+            <span>円/時</span>
+          </div>
+        </div>
+        <div class="rate-item hol">
+          <label>土日祝・通常（〜22時）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="srate_${i}_holNormal" value="${rt.holNormal || ''}" min="0" placeholder="1250">
+            <span>円/時</span>
+          </div>
+        </div>
+        <div class="rate-item hol late">
+          <label>土日祝・深夜（22時〜）</label>
+          <div class="rate-input-wrap">
+            <input type="number" id="srate_${i}_holLate" value="${rt.holLate || ''}" min="0" placeholder="1500">
+            <span>円/時</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function saveSettings() {
   // スタッフ名
   const names = [];
@@ -868,13 +988,25 @@ function saveSettings() {
   if (names.every(n => !n)) { toast('⚠️ 少なくとも1人の名前を入力してください'); return; }
   saveStaffNamesToStorage(names);
   rebuildSelects();
-  // 時給
-  saveRatesToStorage({
-    wdNormal:  parseInt(document.getElementById('rateWdNormal').value)  || 0,
-    wdLate:    parseInt(document.getElementById('rateWdLate').value)    || 0,
-    holNormal: parseInt(document.getElementById('rateHolNormal').value) || 0,
-    holLate:   parseInt(document.getElementById('rateHolLate').value)   || 0,
-  });
+
+  // 管理者モード時のみ時給・PINを保存
+  if (_adminMode) {
+    const pin = document.getElementById('adminPinInput').value.trim();
+    if (pin) saveAdminPinToStorage(pin);
+
+    const newRates = {};
+    const validNames = names.filter(n => n.trim());
+    validNames.forEach((name, i) => {
+      newRates[name] = {
+        wdNormal:  parseInt(document.getElementById(`srate_${i}_wdNormal`)?.value)  || 0,
+        wdLate:    parseInt(document.getElementById(`srate_${i}_wdLate`)?.value)    || 0,
+        holNormal: parseInt(document.getElementById(`srate_${i}_holNormal`)?.value) || 0,
+        holLate:   parseInt(document.getElementById(`srate_${i}_holLate`)?.value)   || 0,
+      };
+    });
+    saveStaffRatesToStorage(newRates);
+  }
+
   closeModal();
   toast('✅ 設定を保存しました');
   renderAll();
@@ -883,9 +1015,7 @@ function saveSettings() {
 /* =========================================
    勤務データ ストレージ（Firebase）
    ========================================= */
-function loadRecords() {
-  return _records;
-}
+function loadRecords() { return _records; }
 function saveRecords(records) {
   const obj = {};
   records.forEach(r => { obj[r.id] = r; });
@@ -909,17 +1039,19 @@ function addRecord() {
 
   const split   = calcSplitMinutes(startTime, endTime, breakTime);
   const records = loadRecords();
-  records.push({
-    id: Date.now(),
+  const rec = {
+    id:          Date.now(),
     date, staff, startTime, endTime,
     breakTime:   parseInt(breakTime) || 0,
     normalMins:  split.normalMins,
     lateMins:    split.lateMins,
     workMinutes: split.workMinutes
-  });
+  };
+  if (_adminMode) rec.adminOnly = true;   // 管理者モードで入力 → タブレット非表示
+  records.push(rec);
   records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
   saveRecords(records);
-  toast('✅ 記録を追加しました');
+  toast(_adminMode ? '✅ 記録を追加しました（管理者専用）' : '✅ 記録を追加しました');
   renderAll();
 }
 
@@ -941,6 +1073,12 @@ function renderAll() {
   const fs = document.getElementById('filterStaff').value;
 
   let records = loadRecords();
+
+  // 管理者モードでなければ管理者専用レコードを除外
+  if (!_adminMode) {
+    records = records.filter(r => !r.adminOnly);
+  }
+
   if (fm) {
     const { start, end } = getPayPeriodRange(fm);
     records = records.filter(r => r.date >= start && r.date <= end);
@@ -960,7 +1098,7 @@ function renderAll() {
 function renderTable(records) {
   const tbody = document.getElementById('recordsBody');
   if (!records.length) {
-    tbody.innerHTML = '<tr><td colspan="14" class="no-data">表示できる記録がありません</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="no-data">表示できる記録がありません</td></tr>';
     return;
   }
 
@@ -984,13 +1122,17 @@ function renderTable(records) {
     const typeBadge = info.isSpecial
       ? '<span class="badge-type badge-hol">土日祝</span>'
       : '<span class="badge-type badge-wd">平日</span>';
+    // 管理者専用バッジ（管理者モード時のみ表示）
+    const adminBadge = (r.adminOnly && _adminMode)
+      ? '<span class="badge-admin">🔒管</span>'
+      : '';
 
     const trClass = info.isSpecial ? 'row-holiday' : '';
 
     return `<tr class="${trClass}">
       <td class="cell-date">${fmtDate(r.date)}</td>
       <td class="cell-day">${dayLabel}</td>
-      <td>${esc(r.staff)}${typeBadge}</td>
+      <td>${esc(r.staff)}${typeBadge}${adminBadge}</td>
       <td>${r.startTime}</td>
       <td>${r.endTime}</td>
       <td style="text-align:center">${r.breakTime}</td>
@@ -1035,7 +1177,7 @@ function renderSummary(records, filterStaff) {
     }
 
     const info = getDayInfo(r.date);
-    const pay  = calcPay(nm, lm, info.isSpecial);
+    const pay  = calcPay(nm, lm, info.isSpecial, r.staff);  // スタッフ別時給で計算
     const d    = map[r.staff];
 
     if (info.isSpecial) {
@@ -1054,17 +1196,19 @@ function renderSummary(records, filterStaff) {
     grandPay   += pay.totalPay;
   });
 
+  // 給与表示は管理者モード＋時給設定済みの場合のみ
+  const anyRatesSet = _adminMode && Object.values(_staffRates).some(
+    rt => rt.wdNormal > 0 || rt.holNormal > 0
+  );
+
   // 合計バー
-  const rates = loadRates();
-  const ratesSet = rates.wdNormal > 0 || rates.holNormal > 0;
   totalRow.style.display = 'flex';
   totalLabel.textContent = filterStaff ? `${filterStaff} 合計` : '全スタッフ合計';
 
-  // 全スタッフの深夜給与合計（平日・土日祝）
   let allWdLatePay = 0, allHolLatePay = 0;
   Object.values(map).forEach(d => { allWdLatePay += d.wdLatePay; allHolLatePay += d.holLatePay; });
 
-  if (ratesSet) {
+  if (anyRatesSet) {
     let txt = `${minsToLabel(grandTotal)}　合計給与：${grandPay.toLocaleString()}円`;
     if (allWdLatePay > 0)  txt += `　平日深夜：${allWdLatePay.toLocaleString()}円`;
     if (allHolLatePay > 0) txt += `　土日祝深夜：${allHolLatePay.toLocaleString()}円`;
@@ -1074,9 +1218,14 @@ function renderSummary(records, filterStaff) {
   }
 
   grid.innerHTML = Object.entries(map).map(([name, d]) => {
-    const hasHol = d.holDays > 0;
-    const lateMins = d.wdLate + d.holLate;
-    const latePay  = d.wdLatePay + d.holLatePay;
+    const hasHol  = d.holDays > 0;
+    const staffRt = _staffRates[name] || {};
+    // 管理者モード＋そのスタッフの時給設定済みの場合のみ給与表示
+    const showPay = _adminMode && (
+      staffRt.wdNormal > 0 || staffRt.holNormal > 0 ||
+      staffRt.wdLate   > 0 || staffRt.holLate   > 0
+    );
+
     return `
     <div class="summary-item ${hasHol ? 'holiday-card' : ''}">
       <div class="s-name">${esc(name)}</div>
@@ -1107,7 +1256,7 @@ function renderSummary(records, filterStaff) {
         <span class="s-val">${d.days}日${hasHol ? `<span style="color:#ff3b30;font-size:12px">（${d.holDays}日）</span>` : ''}</span>
       </div>
 
-      ${ratesSet ? `
+      ${showPay ? `
       <div class="s-row" style="margin-top:8px"><span class="s-label">━━ 給与内訳 ━━</span><span></span></div>
       <div class="s-row">
         <span class="s-label">平日・通常給与</span>
@@ -1123,7 +1272,7 @@ function renderSummary(records, filterStaff) {
       </div>` : ''}
       ${d.holLatePay > 0 ? `<div class="s-row">
         <span class="s-label">土日祝・深夜給与（22時〜）</span>
-        <span class="s-val red" style="color:#8e44ad">${yenLabel(d.holLatePay)}</span>
+        <span class="s-val" style="color:#8e44ad">${yenLabel(d.holLatePay)}</span>
       </div>` : ''}
       <div class="s-row" style="border-top:1.5px solid #e5e5ea;margin-top:6px;padding-top:6px">
         <span class="s-label" style="font-weight:700">合計給与</span>
@@ -1157,7 +1306,6 @@ function getPayPeriodRange(ym) {
   const end    = `${y}-${String(m).padStart(2,'0')}-05`;
   return { start, end };
 }
-
 function formatMonth(s) {
   if (!s) return '';
   const [y, m] = s.split('-').map(Number);
@@ -1210,9 +1358,13 @@ function init() {
     if (Array.isArray(data.settings?.staffNames) && data.settings.staffNames.length > 0) {
       _staffNames = data.settings.staffNames;
     }
-    // 時給
-    if (data.settings?.rates) {
-      _rates = data.settings.rates;
+    // スタッフ別時給
+    if (data.settings?.staffRates) {
+      _staffRates = data.settings.staffRates;
+    }
+    // 管理者PIN
+    if (data.settings?.adminPin) {
+      _adminPin = String(data.settings.adminPin);
     }
     rebuildSelects();
     renderAll();
