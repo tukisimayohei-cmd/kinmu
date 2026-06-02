@@ -1055,16 +1055,6 @@ function addRecord() {
     return;
   }
 
-  // 管理者モードでない場合はパスワード確認
-  if (!_adminMode) {
-    const pw = prompt('パスワードを入力してください：');
-    if (pw === null) return;
-    if (pw !== String(_recordPin)) {
-      toast('❌ パスワードが違います');
-      return;
-    }
-  }
-
   const split   = calcSplitMinutes(startTime, endTime, breakTime);
   const records = loadRecords();
   const rec = {
@@ -1087,6 +1077,15 @@ function addRecord() {
    記録削除
    ========================================= */
 function deleteRecord(id) {
+  // 管理者モードでない場合はパスワード確認
+  if (!_adminMode) {
+    const pw = prompt('削除するにはパスワードを入力してください：');
+    if (pw === null) return;
+    if (pw !== String(_recordPin)) {
+      toast('❌ パスワードが違います');
+      return;
+    }
+  }
   if (!confirm('この記録を削除しますか？')) return;
   saveRecords(loadRecords().filter(r => r.id !== id));
   toast('🗑️ 記録を削除しました');
