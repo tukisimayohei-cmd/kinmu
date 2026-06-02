@@ -551,12 +551,22 @@
       <div class="staff-input-row"><div class="staff-num">4</div><input type="text" id="sn4" placeholder="スタッフ4の名前"></div>
       <div class="staff-input-row"><div class="staff-num">5</div><input type="text" id="sn5" placeholder="スタッフ5の名前"></div>
     </div>
-    <!-- 管理者PIN設定（管理者モード時のみ表示） -->
+    <!-- 管理者PIN・記録パスワード設定（管理者モード時のみ表示） -->
     <div class="rate-section" id="pinSection" style="display:none">
-      <div class="rate-section-title">🔐 管理者PIN変更</div>
-      <div class="rate-input-wrap">
-        <input type="number" id="adminPinInput" min="0" max="99999" placeholder="1234" style="max-width:140px;min-height:46px;font-size:17px;padding:10px 12px">
-        <span>（数字）</span>
+      <div class="rate-section-title">🔐 PIN・パスワード変更</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;color:#6c6c70;display:block;margin-bottom:6px">管理者PIN（🔒ボタン用）</label>
+        <div class="rate-input-wrap">
+          <input type="number" id="adminPinInput" min="0" max="99999" placeholder="1234" style="max-width:140px;min-height:46px;font-size:17px;padding:10px 12px">
+          <span>（数字）</span>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:13px;color:#6c6c70;display:block;margin-bottom:6px">記録追加パスワード（iPad入力時）</label>
+        <div class="rate-input-wrap">
+          <input type="number" id="recordPinInput" min="0" max="99999" placeholder="1009" style="max-width:140px;min-height:46px;font-size:17px;padding:10px 12px">
+          <span>（数字）</span>
+        </div>
       </div>
     </div>
     <!-- スタッフ別時給設定（管理者モード時のみ表示） -->
@@ -815,6 +825,7 @@ let _staffNames = [...DEFAULT_STAFF];
 let _staffRates = {};          // { staffName: { wdNormal, wdLate, holNormal, holLate } }
 let _adminMode  = false;
 let _adminPin   = '1234';
+let _recordPin  = '1009';     // 記録追加時のパスワード（非管理者モード）
 
 /* =========================================
    時給管理（スタッフ別）
@@ -829,6 +840,10 @@ function saveStaffRatesToStorage(obj) {
 function saveAdminPinToStorage(pin) {
   _adminPin = String(pin);
   db.ref('settings/adminPin').set(pin);
+}
+function saveRecordPinToStorage(pin) {
+  _recordPin = String(pin);
+  db.ref('settings/recordPin').set(pin);
 }
 
 // 給与計算（スタッフ名で個別時給を参照）
@@ -918,7 +933,8 @@ function openModal() {
   if (_adminMode) {
     pinSection.style.display   = '';
     ratesSection.style.display = '';
-    document.getElementById('adminPinInput').value = _adminPin || '';
+    document.getElementById('adminPinInput').value  = _adminPin  || '';
+    document.getElementById('recordPinInput').value = _recordPin || '';
     buildStaffRateInputs(names);
   } else {
     pinSection.style.display   = 'none';
@@ -993,6 +1009,8 @@ function saveSettings() {
   if (_adminMode) {
     const pin = document.getElementById('adminPinInput').value.trim();
     if (pin) saveAdminPinToStorage(pin);
+    const rpin = document.getElementById('recordPinInput').value.trim();
+    if (rpin) saveRecordPinToStorage(rpin);
 
     const newRates = {};
     const validNames = names.filter(n => n.trim());
@@ -1035,6 +1053,16 @@ function addRecord() {
   if (!date || !staff || !startTime || !endTime) {
     toast('⚠️ 日付・スタッフ・出退勤時間を入力してください');
     return;
+  }
+
+  // 管理者モードでない場合はパスワード確認
+  if (!_adminMode) {
+    const pw = prompt('パスワードを入力してください：');
+    if (pw === null) return;
+    if (pw !== String(_recordPin)) {
+      toast('❌ パスワードが違います');
+      return;
+    }
   }
 
   const split   = calcSplitMinutes(startTime, endTime, breakTime);
@@ -1365,6 +1393,10 @@ function init() {
     // 管理者PIN
     if (data.settings?.adminPin) {
       _adminPin = String(data.settings.adminPin);
+    }
+    // 記録追加パスワード
+    if (data.settings?.recordPin) {
+      _recordPin = String(data.settings.recordPin);
     }
     rebuildSelects();
     renderAll();
