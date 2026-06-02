@@ -941,7 +941,10 @@ function renderAll() {
   const fs = document.getElementById('filterStaff').value;
 
   let records = loadRecords();
-  if (fm) records = records.filter(r => r.date.startsWith(fm));
+  if (fm) {
+    const { start, end } = getPayPeriodRange(fm);
+    records = records.filter(r => r.date >= start && r.date <= end);
+  }
   if (fs) records = records.filter(r => r.staff === fs);
 
   const monthLabel = fm ? formatMonth(fm) : '全期間';
@@ -1139,10 +1142,27 @@ function fmtDate(s) {
   const [y, m, d] = s.split('-');
   return `${y}/${m}/${d}`;
 }
+function fmtDateShort(s) {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${parseInt(m)}/${parseInt(d)}`;
+}
+
+/* 5日締め・6日始まり：「X月分」= (X-1)月6日 〜 X月5日 */
+function getPayPeriodRange(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const startM = m === 1 ? 12 : m - 1;
+  const startY = m === 1 ? y - 1 : y;
+  const start  = `${startY}-${String(startM).padStart(2,'0')}-06`;
+  const end    = `${y}-${String(m).padStart(2,'0')}-05`;
+  return { start, end };
+}
+
 function formatMonth(s) {
   if (!s) return '';
-  const [y, m] = s.split('-');
-  return `${y}年${parseInt(m)}月`;
+  const [y, m] = s.split('-').map(Number);
+  const { start, end } = getPayPeriodRange(s);
+  return `${y}年${m}月分（${fmtDateShort(start)}〜${fmtDateShort(end)}）`;
 }
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1164,8 +1184,17 @@ function init() {
   const m  = String(now.getMonth() + 1).padStart(2, '0');
   const d  = String(now.getDate()).padStart(2, '0');
 
-  document.getElementById('date').value        = `${y}-${m}-${d}`;
-  document.getElementById('filterMonth').value = `${y}-${m}`;
+  document.getElementById('date').value = `${y}-${m}-${d}`;
+
+  // 5日締め・6日始まり：当月分（締め月）を初期表示
+  const day = now.getDate();
+  let payYear  = now.getFullYear();
+  let payMonth = now.getMonth() + 1;
+  if (day >= 6) {
+    payMonth += 1;
+    if (payMonth > 12) { payMonth = 1; payYear++; }
+  }
+  document.getElementById('filterMonth').value = `${payYear}-${String(payMonth).padStart(2,'0')}`;
 
   const week = ['日','月','火','水','木','金','土'];
   document.getElementById('headerDate').textContent =
