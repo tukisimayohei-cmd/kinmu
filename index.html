@@ -1069,7 +1069,7 @@ function addRecord() {
   records.push(rec);
   records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
   saveRecords(records);
-  toast(_adminMode ? '✅ 記録を追加しました（管理者専用）' : '✅ 記録を追加しました');
+  toast('✅ 記録を追加しました');
   renderAll();
 }
 
@@ -1100,11 +1100,6 @@ function renderAll() {
   const fs = document.getElementById('filterStaff').value;
 
   let records = loadRecords();
-
-  // 管理者モードでなければ管理者専用レコードを除外
-  if (!_adminMode) {
-    records = records.filter(r => !r.adminOnly);
-  }
 
   if (fm) {
     const { start, end } = getPayPeriodRange(fm);
@@ -1228,8 +1223,8 @@ function renderSummary(records, filterStaff) {
     rt => rt.wdNormal > 0 || rt.holNormal > 0
   );
 
-  // 合計バー
-  totalRow.style.display = 'flex';
+  // 合計バー（管理者モードのみ表示）
+  totalRow.style.display = _adminMode ? 'flex' : 'none';
   totalLabel.textContent = filterStaff ? `${filterStaff} 合計` : '全スタッフ合計';
 
   let allWdLatePay = 0, allHolLatePay = 0;
