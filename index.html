@@ -7,6 +7,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
     /* ===== リセット & ベース ===== */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1370,31 +1371,39 @@ function init() {
   document.getElementById('headerDate').textContent =
     `${y}年${parseInt(m)}月${parseInt(d)}日（${week[now.getDay()]}）`;
 
-  // Firebase リアルタイムリスナー（どのデバイスで変更しても即反映）
-  db.ref('/').on('value', snapshot => {
-    const data = snapshot.val() || {};
-    // 勤務記録
-    _records = data.records ? Object.values(data.records) : [];
-    _records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
-    // スタッフ名
-    if (Array.isArray(data.settings?.staffNames) && data.settings.staffNames.length > 0) {
-      _staffNames = data.settings.staffNames;
-    }
-    // スタッフ別時給
-    if (data.settings?.staffRates) {
-      _staffRates = data.settings.staffRates;
-    }
-    // 管理者PIN
-    if (data.settings?.adminPin) {
-      _adminPin = String(data.settings.adminPin);
-    }
-    // 記録追加パスワード
-    if (data.settings?.recordPin) {
-      _recordPin = String(data.settings.recordPin);
-    }
-    rebuildSelects();
-    renderAll();
-  });
+  // 匿名認証してからFirebaseに接続（セキュリティ対策）
+  firebase.auth().signInAnonymously()
+    .then(() => {
+      // Firebase リアルタイムリスナー（どのデバイスで変更しても即反映）
+      db.ref('/').on('value', snapshot => {
+        const data = snapshot.val() || {};
+        // 勤務記録
+        _records = data.records ? Object.values(data.records) : [];
+        _records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
+        // スタッフ名
+        if (Array.isArray(data.settings?.staffNames) && data.settings.staffNames.length > 0) {
+          _staffNames = data.settings.staffNames;
+        }
+        // スタッフ別時給
+        if (data.settings?.staffRates) {
+          _staffRates = data.settings.staffRates;
+        }
+        // 管理者PIN
+        if (data.settings?.adminPin) {
+          _adminPin = String(data.settings.adminPin);
+        }
+        // 記録追加パスワード
+        if (data.settings?.recordPin) {
+          _recordPin = String(data.settings.recordPin);
+        }
+        rebuildSelects();
+        renderAll();
+      });
+    })
+    .catch(err => {
+      console.error('Auth error:', err);
+      toast('⚠️ 接続エラーが発生しました。再読み込みしてください。');
+    });
 }
 
 init();
