@@ -550,6 +550,8 @@
       <div class="staff-input-row"><div class="staff-num">3</div><input type="text" id="sn3" placeholder="スタッフ3の名前"></div>
       <div class="staff-input-row"><div class="staff-num">4</div><input type="text" id="sn4" placeholder="スタッフ4の名前"></div>
       <div class="staff-input-row"><div class="staff-num">5</div><input type="text" id="sn5" placeholder="スタッフ5の名前"></div>
+      <div class="staff-input-row"><div class="staff-num">6</div><input type="text" id="sn6" placeholder="スタッフ6の名前"></div>
+      <div class="staff-input-row"><div class="staff-num">7</div><input type="text" id="sn7" placeholder="スタッフ7の名前"></div>
     </div>
     <!-- 管理者PIN・記録パスワード設定（管理者モード時のみ表示） -->
     <div class="rate-section" id="pinSection" style="display:none">
@@ -925,7 +927,7 @@ function rebuildSelects() {
    ========================================= */
 function openModal() {
   const names = loadStaffNames();
-  for (let i = 1; i <= 5; i++)
+  for (let i = 1; i <= 7; i++)
     document.getElementById('sn' + i).value = names[i - 1] || '';
 
   const pinSection   = document.getElementById('pinSection');
@@ -999,7 +1001,7 @@ function buildStaffRateInputs(names) {
 function saveSettings() {
   // スタッフ名
   const names = [];
-  for (let i = 1; i <= 5; i++)
+  for (let i = 1; i <= 7; i++)
     names.push(document.getElementById('sn' + i).value.trim());
   if (names.every(n => !n)) { toast('⚠️ 少なくとも1人の名前を入力してください'); return; }
   saveStaffNamesToStorage(names);
