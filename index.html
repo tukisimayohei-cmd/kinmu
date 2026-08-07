@@ -509,32 +509,30 @@
 
     /* ===== 印刷用スタイル ===== */
     @media print {
-      @page { size: A4 landscape; margin: 8mm; }
-      html, body { background: #fff !important; padding: 0; margin: 0; color: #000; }
-      body { zoom: 0.75; }
+      @page { size: A4 landscape; margin: 5mm; }
+      html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      html, body { background: #fff !important; padding: 0; margin: 0; color: #000; font-size: 10px; }
       .no-print { display: none !important; }
       .modal-overlay { display: none !important; }
-      .settings-btn { display: none !important; }
       .card {
         box-shadow: none;
         border: 1px solid #ccc;
-        padding: 8px;
-        margin-bottom: 8px;
-        border-radius: 4px;
-        page-break-inside: avoid;
+        padding: 5px 8px;
+        margin-bottom: 6px;
+        border-radius: 3px;
       }
-      .card-title { font-size: 12px; padding-bottom: 4px; margin-bottom: 6px; }
-      .app-header { margin-bottom: 8px; }
-      .app-header h1 { font-size: 15px; }
-      .app-header .subtitle { font-size: 10px; }
-      table { min-width: auto; font-size: 9px; width: 100%; }
-      th, td { padding: 3px 5px; }
-      thead tr { background: #333 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      tbody tr.row-holiday { background: #ffe0e0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card-title { font-size: 11px; padding-bottom: 3px; margin-bottom: 4px; }
+      .app-header { margin-bottom: 5px; }
+      .app-header h1 { font-size: 13px; }
+      .app-header .subtitle { font-size: 9px; }
+      table { min-width: auto; font-size: 8.5px; width: 100%; border-collapse: collapse; }
+      th, td { padding: 2px 4px; line-height: 1.3; }
+      thead tr { background: #333 !important; }
+      tbody tr.row-holiday { background: #ffe0e0 !important; }
       tbody tr.row-holiday .cell-date,
       tbody tr.row-holiday .cell-day { color: #cc0000 !important; }
-      th.col-normal { background: #2c5f8a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      th.col-late   { background: #7b2d8b !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      th.col-normal { background: #2c5f8a !important; }
+      th.col-late   { background: #7b2d8b !important; }
       .toast { display: none; }
     }
   </style>
