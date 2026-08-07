@@ -629,6 +629,14 @@
 
     <div class="form-group">
       <label>&nbsp;</label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:15px;cursor:pointer;padding:10px 0">
+        <input type="checkbox" id="forceSpecial" style="width:20px;height:20px;cursor:pointer">
+        土日祝扱いにする
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label>&nbsp;</label>
       <button class="btn btn-primary" onclick="addRecord()">＋ 記録を追加</button>
     </div>
 
@@ -1060,6 +1068,7 @@ function addRecord() {
     return;
   }
 
+  const forceSpecial = document.getElementById('forceSpecial').checked;
   const split   = calcSplitMinutes(startTime, endTime, breakTime);
   const records = loadRecords();
   const rec = {
@@ -1070,10 +1079,12 @@ function addRecord() {
     lateMins:    split.lateMins,
     workMinutes: split.workMinutes
   };
-  if (_adminMode) rec.adminOnly = true;   // 管理者モードで入力 → タブレット非表示
+  if (forceSpecial) rec.forceSpecial = true;
+  if (_adminMode) rec.adminOnly = true;
   records.push(rec);
   records.sort((a, b) => a.date.localeCompare(b.date) || a.staff.localeCompare(b.staff));
   saveRecords(records);
+  document.getElementById('forceSpecial').checked = false;
   toast('✅ 記録を追加しました');
   renderAll();
 }
@@ -1144,9 +1155,11 @@ function renderTable(records) {
     }
 
     // 曜日ラベル
+    const isSpecial = r.forceSpecial || info.isSpecial;
     let dayLabel = info.dayLabel;
     if (info.isHol) dayLabel += '<span class="badge-holiday">祝</span>';
-    const typeBadge = info.isSpecial
+    if (r.forceSpecial && !info.isSpecial) dayLabel += '<span class="badge-holiday" style="background:#ff9500">特</span>';
+    const typeBadge = isSpecial
       ? '<span class="badge-type badge-hol">土日祝</span>'
       : '<span class="badge-type badge-wd">平日</span>';
     // 管理者専用バッジ（管理者モード時のみ表示）
@@ -1154,7 +1167,7 @@ function renderTable(records) {
       ? '<span class="badge-admin">🔒管</span>'
       : '';
 
-    const trClass = info.isSpecial ? 'row-holiday' : '';
+    const trClass = isSpecial ? 'row-holiday' : '';
 
     return `<tr class="${trClass}">
       <td class="cell-date">${fmtDate(r.date)}</td>
@@ -1203,11 +1216,12 @@ function renderSummary(records, filterStaff) {
       nm = split.normalMins; lm = split.lateMins; wm = split.workMinutes;
     }
 
-    const info = getDayInfo(r.date);
-    const pay  = calcPay(nm, lm, info.isSpecial, r.staff);  // スタッフ別時給で計算
+    const info      = getDayInfo(r.date);
+    const isSpecial = r.forceSpecial || info.isSpecial;
+    const pay  = calcPay(nm, lm, isSpecial, r.staff);
     const d    = map[r.staff];
 
-    if (info.isSpecial) {
+    if (isSpecial) {
       d.holNormal += nm; d.holLate += lm;
       d.holNormalPay += pay.normalPay; d.holLatePay += pay.latePay;
       d.holDays += 1;
