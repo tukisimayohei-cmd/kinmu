@@ -509,9 +509,9 @@
 
     /* ===== 印刷用スタイル ===== */
     @media print {
-      @page { size: A4 portrait; margin: 10mm; }
+      @page { size: A4 portrait; margin: 8mm; }
       html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      html, body { background: #fff !important; padding: 0; margin: 0; color: #000; font-size: 13px; }
+      html, body { background: #fff !important; padding: 0; margin: 0; color: #000; font-size: 14px; }
       .no-print { display: none !important; }
       .modal-overlay { display: none !important; }
       .card {
@@ -521,12 +521,13 @@
         margin-bottom: 10px;
         border-radius: 4px;
       }
-      .card-title { font-size: 14px; padding-bottom: 6px; margin-bottom: 8px; }
+      .card-title { font-size: 15px; padding-bottom: 6px; margin-bottom: 8px; }
       .app-header { margin-bottom: 10px; }
-      .app-header h1 { font-size: 20px; }
-      .app-header .subtitle { font-size: 12px; }
-      table { min-width: auto; font-size: 11px; width: 100%; border-collapse: collapse; }
-      th, td { padding: 4px 6px; line-height: 1.4; }
+      .app-header h1 { font-size: 22px; }
+      .app-header .subtitle { font-size: 13px; }
+      .table-wrap { overflow-x: visible !important; width: 100% !important; }
+      table { min-width: 0 !important; font-size: 12px; width: 100% !important; border-collapse: collapse; table-layout: fixed; }
+      th, td { padding: 5px 6px; line-height: 1.4; word-break: break-all; }
       thead tr { background: #333 !important; }
       tbody tr.row-holiday { background: #ffe0e0 !important; }
       tbody tr.row-holiday .cell-date,
